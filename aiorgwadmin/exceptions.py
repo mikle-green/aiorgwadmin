@@ -1,8 +1,8 @@
 """
-rgwadmin.exceptions
+aiorgwadmin.exceptions
 ~~~~~~~~~~~~~~~~~~~
 
-This module contains the rgwadmin exceptions.
+This module contains the aiorgwadmin exceptions.
 
 """
 

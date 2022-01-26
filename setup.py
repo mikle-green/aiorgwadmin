@@ -21,22 +21,22 @@ install_requires = [
 ]
 
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
-with open('rgwadmin/__init__.py', encoding='utf-8') as f:
+with open('aiorgwadmin/__init__.py', encoding='utf-8') as f:
     version = str(ast.literal_eval(_version_re.search(f.read()).group(1)))
 
 
 setup(
     name="aiorgwadmin",
-    packages=["rgwadmin"],
-    package_data={"rgwadmin": ["py.typed"]},
+    packages=["aiorgwadmin"],
+    package_data={"aiorgwadmin": ["py.typed"]},
     zip_safe=False,
     version=version,
     install_requires=install_requires,
-    author="Derek Yarnell",
+    author="Derek Yarnell, Mikle",
     author_email="derek@umiacs.umd.edu",
     maintainer="UMIACS Staff",
     maintainer_email="github@umiacs.umd.edu",
-    url="https://github.com/UMIACS/rgwadmin",
+    url="https://github.com/mikle-green/aiorgwadmin",
     license="LGPL v2.1",
     description="Python Rados Gateway Admin API",
     long_description=long_description,
