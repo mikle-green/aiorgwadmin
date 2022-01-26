@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import logging
-import rgwadmin
+import aiorgwadmin
 import unittest
 import random
-from rgwadmin.exceptions import InvalidArgument
-from rgwadmin.utils import get_environment_creds
+from aiorgwadmin.exceptions import InvalidArgument
+from aiorgwadmin.utils import get_environment_creds
 from . import create_bucket
 
 logging.basicConfig(level=logging.WARNING)
@@ -14,12 +14,12 @@ logging.basicConfig(level=logging.WARNING)
 class RGWAdminTest(unittest.TestCase):
 
     def setUp(self):
-        self.rgw = rgwadmin.RGWAdmin(
+        self.rgw = aiorgwadmin.RGWAdmin(
             secure=False, verify=False, **get_environment_creds())
         self.user1 = 'foo1209'
         self.user2 = 'foo1213'
         self.user3 = 'bar3142'
-        self.secret = rgwadmin.RGWAdmin.gen_secret_key()
+        self.secret = aiorgwadmin.RGWAdmin.gen_secret_key()
         user1 = self.rgw.create_user(uid=self.user1,
                                      email='%s@example.com' % self.user1,
                                      display_name='Unit Test %s' % self.user1,
@@ -71,7 +71,7 @@ class RGWAdminTest(unittest.TestCase):
             self.rgw.create_user(uid=self.user3,
                                  email='%s@example.com' % self.user1,
                                  display_name='Unit Test %s' % self.user3,
-                                 secret_key=rgwadmin.RGWAdmin.gen_secret_key())
+                                 secret_key=aiorgwadmin.RGWAdmin.gen_secret_key())
 
     def test_get_user(self):
         user = self.rgw.get_user(uid=self.user2)
@@ -134,8 +134,8 @@ class RGWAdminTest(unittest.TestCase):
                 self.assertTrue(subs['permissions'] == 'write')
 
     def test_s3_keys(self):
-        access = rgwadmin.RGWAdmin.gen_secret_key(size=20)
-        secret = rgwadmin.RGWAdmin.gen_secret_key(size=40)
+        access = aiorgwadmin.RGWAdmin.gen_secret_key(size=20)
+        secret = aiorgwadmin.RGWAdmin.gen_secret_key(size=40)
         keys = self.rgw.create_key(uid=self.user1,
                                    access_key=access,
                                    secret_key=secret)
@@ -144,7 +144,7 @@ class RGWAdminTest(unittest.TestCase):
                 self.assertTrue(key['secret_key'] == secret)
 
     def test_parse_rados_datestring(self):
-        rgwadmin.RGWAdmin.parse_rados_datestring(u'2016-06-27T16:06:39.163Z')
+        aiorgwadmin.RGWAdmin.parse_rados_datestring(u'2016-06-27T16:06:39.163Z')
 
 
 if __name__ == '__main__':

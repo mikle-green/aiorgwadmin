@@ -5,8 +5,8 @@ import logging
 import unittest
 from urllib.parse import quote
 
-import rgwadmin
-from rgwadmin.utils import get_environment_creds, id_generator
+import aiorgwadmin
+from aiorgwadmin.utils import get_environment_creds, id_generator
 from . import create_bucket
 
 logging.basicConfig(level=logging.WARNING)
@@ -15,9 +15,9 @@ logging.basicConfig(level=logging.WARNING)
 class MetadataTest(unittest.TestCase):
 
     def setUp(self):
-        self.rgw = rgwadmin.RGWAdmin(secure=False, verify=False,
-                                     **get_environment_creds())
-        rgwadmin.RGWAdmin.set_connection(self.rgw)
+        self.rgw = aiorgwadmin.RGWAdmin(secure=False, verify=False,
+                                        **get_environment_creds())
+        aiorgwadmin.RGWAdmin.set_connection(self.rgw)
 
     def test_get_metadata(self):
         bucket_name = id_generator()
@@ -47,7 +47,7 @@ class MetadataTest(unittest.TestCase):
         self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
 
     def test_invalid_metadata_unlock(self):
-        with self.assertRaises(rgwadmin.exceptions.NoSuchKey):
+        with self.assertRaises(aiorgwadmin.exceptions.NoSuchKey):
             key = id_generator()
             self.rgw.unlock_metadata('bucket', key=key, lock_id='abc')
 

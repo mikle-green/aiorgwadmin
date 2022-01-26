@@ -1,6 +1,6 @@
 __title__ = 'aiorgwadmin'
 __version__ = "1.0.0"
-__author__ = 'Derek Yarnell'
+__author__ = 'Derek Yarnell, Mikle'
 __license__ = 'LGPL v2.1'
 
 from .rgw import RGWAdmin
