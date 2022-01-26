@@ -16,7 +16,7 @@ with open(path.join(BASE_DIR, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 install_requires = [
-    "requests",
+    "aiohttp",
     "requests-aws",
 ]
 
@@ -26,7 +26,7 @@ with open('rgwadmin/__init__.py', encoding='utf-8') as f:
 
 
 setup(
-    name="rgwadmin",
+    name="aiorgwadmin",
     packages=["rgwadmin"],
     package_data={"rgwadmin": ["py.typed"]},
     zip_safe=False,
@@ -41,7 +41,7 @@ setup(
     description="Python Rados Gateway Admin API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    keywords=["ceph", "radosgw", "admin api"],
+    keywords=["ceph", "radosgw", "admin api", "async"],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3',

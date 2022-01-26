@@ -1,4 +1,4 @@
-# rgwadmin
+# aiorgwadmin
 
 [![Documentation Status](https://readthedocs.org/projects/rgwadmin/badge/?version=latest)](https://rgwadmin.readthedocs.io/en/latest/?badge=latest)
 
