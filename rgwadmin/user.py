@@ -164,20 +164,20 @@ class RGWUser(AttributeMixin):
         return str('%s %s' % (self.__class__.__name__, self.user_id))
 
     @classmethod
-    def create(cls, user_id, display_name, **kwargs):
+    async def create(cls, user_id, display_name, **kwargs):
         rgw = RGWAdmin.get_connection()
         log.debug('Creating user %s' % user_id)
-        rgw.create_user(uid=user_id,
-                        display_name=display_name,
-                        **kwargs)
-        return cls.fetch(user_id)
+        await rgw.create_user(uid=user_id,
+                              display_name=display_name,
+                              **kwargs)
+        return await cls.fetch(user_id)
 
-    def diff(self):
+    async def diff(self):
         rgw = RGWAdmin.get_connection()
         d = {}
         current = self.to_dict()
         try:
-            existing = rgw.get_metadata('user', self.user_id)['data']
+            existing = await rgw.get_metadata('user', self.user_id)['data']
         except NoSuchKey:
             logging.info('Unable to fetch the user %s.' % self.user_id)
             return current
@@ -187,52 +187,52 @@ class RGWUser(AttributeMixin):
                     d[k] = (existing[k], current[k])
         return d
 
-    def exists(self):
+    async def exists(self):
         """Return True if the user exists.  False otherwise."""
         rgw = RGWAdmin.get_connection()
         try:
-            rgw.get_metadata('user', self.user_id)
+            await rgw.get_metadata('user', self.user_id)
             return True
         except NoSuchKey:
             return False
 
-    def save(self):
+    async def save(self):
         rgw = RGWAdmin.get_connection()
 
         if not self.exists():
             log.debug('User does not exist. Creating %s' % self.user_id)
-            rgw.create_user(uid=self.user_id,
-                            display_name=self.display_name)
+            await rgw.create_user(uid=self.user_id,
+                                  display_name=self.display_name)
 
         d = self._modify_dict()
         log.debug('Modify existing user %s %s' % (self.user_id, d))
-        rgw.modify_user(**d)
-        rgw.set_user_quota(self.user_id, 'user', **self.user_quota.to_dict())
-        rgw.set_user_quota(self.user_id, 'bucket', **self.bucket_quota.to_dict())
+        await rgw.modify_user(**d)
+        await rgw.set_user_quota(self.user_id, 'user', **self.user_quota.to_dict())
+        await rgw.set_user_quota(self.user_id, 'bucket', **self.bucket_quota.to_dict())
 
-    def delete(self):
+    async def delete(self):
         rgw = RGWAdmin.get_connection()
         try:
-            rgw.get_metadata('user', self.user_id)
+            await rgw.get_metadata('user', self.user_id)
         except NoSuchKey:
             logging.error('User %s does not exist yet aborting.' %
                           self.user_id)
             return False
         logging.info('Deleting user %s from %s' %
                      (self.user_id, rgw.get_base_url()))
-        return rgw.remove_user(uid=self.user_id)
+        return await rgw.remove_user(uid=self.user_id)
 
     @classmethod
-    def list(cls):
+    async def list(cls):
         rgw = RGWAdmin.get_connection()
-        return [cls.fetch(x) for x in rgw.get_users()]
+        return [await cls.fetch(x) for x in await rgw.get_users()]
 
     @classmethod
-    def fetch(cls, user):
+    async def fetch(cls, user):
         log.debug('Fetching user %s' % user)
         rgw = RGWAdmin.get_connection()
         try:
-            j = rgw.get_metadata('user', user)
+            j = await rgw.get_metadata('user', user)
         except NoSuchKey:
             return None
         else:
