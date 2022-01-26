@@ -2,7 +2,9 @@
 
 [![Documentation Status](https://readthedocs.org/projects/rgwadmin/badge/?version=latest)](https://rgwadmin.readthedocs.io/en/latest/?badge=latest)
 
-rgwadmin is a Python library to access the Ceph Object Storage Admin API.
+aiorgwadmin is fork of rgwadmin library.
+
+aiorgwadmin is an async Python library to access the Ceph Object Storage Admin API.
 
 http://docs.ceph.com/docs/master/radosgw/adminops/
 
@@ -10,7 +12,7 @@ http://docs.ceph.com/docs/master/radosgw/adminops/
 ## API Example Usage
 
 ```python
-from rgwadmin import RGWAdmin
+from aiorgwadmin import RGWAdmin
 
 rgw = RGWAdmin(access_key='XXX', secret_key='XXX', server='obj.example.com')
 rgw.create_user(
@@ -22,14 +24,15 @@ rgw.create_user(
 rgw.set_user_quota(
     uid='liam',
     quota_type='user',
-    max_size_kb=1024*1024,
+    max_size_kb=1024 * 1024,
     enabled=True)
 rgw.remove_user(uid='liam', purge_data=True)
 ```
 
 ## User Example Usage
+
 ```python
-from rgwadmin import RGWAdmin, RGWUser
+from aiorgwadmin import RGWAdmin, RGWUser
 
 RGWAdmin.connect(access_key='XXX', secret_key='XXX', server='obj.example.com')
 u = RGWUser.create(user_id='test', display_name='Test User')
@@ -41,9 +44,9 @@ u.delete()
 
 ## Requirements
 
-rgwadmin requires the following Python packages:
+aiorgwadmin requires the following Python packages:
 
- * [requests](http://python-requests.org/)
+ * [aiohttp](https://docs.aiohttp.org)
  * [requests-aws](https://github.com/tax/python-requests-aws)
 
 Additionally, you need to have a [Ceph](http://www.ceph.org) Object Storage
@@ -52,15 +55,13 @@ the API that you want to access.  See the
 [Ceph Object Storage](http://docs.ceph.com/docs/master/radosgw/) page for more
 information.
 
-Version 2.3.1 was the last to support Python 2.
-
 ### Compatibility
-rgwadmin implements all documented Admin API operations or recent versions of
+aiorgwadmin implements all documented Admin API operations or recent versions of
 Ceph.  We also implement some of the undocumented ones, too...
 
 ## Installation
 
-```pip install rgwadmin```
+```pip install aiorgwadmin```
 
 
 ## License

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import logging
-import rgwadmin
+import aiorgwadmin
 import unittest
-from rgwadmin.utils import get_environment_creds, id_generator
-from rgwadmin.user import RGWUser
+from aiorgwadmin.utils import get_environment_creds, id_generator
+from aiorgwadmin.user import RGWUser
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -12,9 +12,9 @@ logging.basicConfig(level=logging.WARNING)
 class RGWUserTest(unittest.TestCase):
 
     def setUp(self):
-        rgw = rgwadmin.RGWAdmin(secure=False, verify=False,
-                                **get_environment_creds())
-        rgwadmin.RGWAdmin.set_connection(rgw)
+        rgw = aiorgwadmin.RGWAdmin(secure=False, verify=False,
+                                   **get_environment_creds())
+        aiorgwadmin.RGWAdmin.set_connection(rgw)
 
     def test_create_user(self):
         user_id = id_generator()
