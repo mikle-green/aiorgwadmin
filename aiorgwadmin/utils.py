@@ -21,7 +21,9 @@ def random_password(size=40, chars=None):
 def get_environment_creds():
     return {'access_key': os.environ['OBJ_ACCESS_KEY_ID'],
             'secret_key': os.environ['OBJ_SECRET_ACCESS_KEY'],
-            'server': os.environ['OBJ_SERVER']}
+            'server': os.environ['OBJ_SERVER'],
+            'secure': 'OBJ_SECURE' in os.environ,
+            'verify': 'OBJ_VERIFY' in os.environ}
 
 
 def id_generator(size=6, chars=None):
