@@ -12,57 +12,56 @@ from . import create_bucket
 logging.basicConfig(level=logging.WARNING)
 
 
-class MetadataTest(unittest.TestCase):
+class MetadataTest(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
-        self.rgw = aiorgwadmin.RGWAdmin(secure=False, verify=False,
-                                        **get_environment_creds())
+        self.rgw = aiorgwadmin.RGWAdmin(**get_environment_creds())
         aiorgwadmin.RGWAdmin.set_connection(self.rgw)
 
-    def test_get_metadata(self):
+    async def test_get_metadata(self):
         bucket_name = id_generator()
-        self.assertTrue(bucket_name not in self.rgw.get_metadata('bucket'))
-        create_bucket(self.rgw, bucket=bucket_name)
-        self.assertTrue(bucket_name in self.rgw.get_metadata('bucket'))
-        self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
+        self.assertTrue(bucket_name not in await self.rgw.get_metadata('bucket'))
+        await create_bucket(self.rgw, bucket=bucket_name)
+        self.assertTrue(bucket_name in await self.rgw.get_metadata('bucket'))
+        await self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
 
-    def test_put_metadata(self):
+    async def test_put_metadata(self):
         bucket_name = id_generator()
-        self.assertTrue(bucket_name not in self.rgw.get_metadata('bucket'))
-        create_bucket(self.rgw, bucket=bucket_name)
+        self.assertTrue(bucket_name not in await self.rgw.get_metadata('bucket'))
+        await create_bucket(self.rgw, bucket=bucket_name)
 
-        ret_json = self.rgw.get_metadata('bucket', key=bucket_name)
+        ret_json = await self.rgw.get_metadata('bucket', key=bucket_name)
         self.assertEqual(ret_json['data']['bucket']['name'], bucket_name)
         json_str = json.dumps(ret_json)
 
-        self.rgw.put_metadata('bucket', key=bucket_name, json_string=json_str)
-        self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
+        await self.rgw.put_metadata('bucket', key=bucket_name, json_string=json_str)
+        await self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
 
-    def test_metadata_lock_unlock(self):
+    async def test_metadata_lock_unlock(self):
         bucket_name = id_generator()
-        create_bucket(self.rgw, bucket=bucket_name)
-        self.rgw.lock_metadata('bucket', key=bucket_name, lock_id='abc',
+        await create_bucket(self.rgw, bucket=bucket_name)
+        await self.rgw.lock_metadata('bucket', key=bucket_name, lock_id='abc',
                                length=5)
-        self.rgw.unlock_metadata('bucket', key=bucket_name, lock_id='abc')
-        self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
+        await self.rgw.unlock_metadata('bucket', key=bucket_name, lock_id='abc')
+        await self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
 
-    def test_invalid_metadata_unlock(self):
+    async def test_invalid_metadata_unlock(self):
         with self.assertRaises(aiorgwadmin.exceptions.NoSuchKey):
             key = id_generator()
-            self.rgw.unlock_metadata('bucket', key=key, lock_id='abc')
+            await self.rgw.unlock_metadata('bucket', key=key, lock_id='abc')
 
-    def test_metadata_type_valid(self):
+    async def test_metadata_type_valid(self):
         with self.assertRaises(Exception):
-            self.rgw.get_metadata('bucketttt')
+            await self.rgw.get_metadata('bucketttt')
 
-    def test_get_bucket_instances(self):
+    async def test_get_bucket_instances(self):
         bucket_name = id_generator()
-        create_bucket(self.rgw, bucket=bucket_name)
-        instances = self.rgw.get_bucket_instances()
-        bucket = self.rgw.get_bucket(bucket_name)
+        await create_bucket(self.rgw, bucket=bucket_name)
+        instances = await self.rgw.get_bucket_instances()
+        bucket = await self.rgw.get_bucket(bucket_name)
         expected_instance = '%s:%s' % (bucket_name, bucket['id'])
         self.assertTrue(expected_instance in instances)
-        self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
+        await self.rgw.remove_bucket(bucket=bucket_name, purge_objects=True)
 
     def test_metadata_marker(self):
         self.assertEqual('default.345%20-5', quote('default.345 -5'))

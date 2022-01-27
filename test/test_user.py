@@ -9,40 +9,39 @@ from aiorgwadmin.user import RGWUser
 logging.basicConfig(level=logging.WARNING)
 
 
-class RGWUserTest(unittest.TestCase):
+class RGWUserTest(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
-        rgw = aiorgwadmin.RGWAdmin(secure=False, verify=False,
-                                   **get_environment_creds())
+        rgw = aiorgwadmin.RGWAdmin(**get_environment_creds())
         aiorgwadmin.RGWAdmin.set_connection(rgw)
 
-    def test_create_user(self):
+    async def test_create_user(self):
         user_id = id_generator()
         display_name = id_generator(25)
-        u = RGWUser.create(user_id=user_id, display_name=display_name)
+        u = await RGWUser.create(user_id=user_id, display_name=display_name)
         self.assertTrue(u.user_id == user_id and
                         u.display_name == display_name)
-        u.delete()
+        await u.delete()
 
-    def test_user_exists(self):
+    async def test_user_exists(self):
         user_id = id_generator()
         display_name = id_generator(25)
-        u = RGWUser.create(user_id=user_id, display_name=display_name)
-        self.assertTrue(u.exists())
-        u.delete()
-        self.assertFalse(u.exists())
-        u.save()
-        self.assertTrue(u.exists())
+        u = await RGWUser.create(user_id=user_id, display_name=display_name)
+        self.assertTrue(await u.exists())
+        await u.delete()
+        self.assertFalse(await u.exists())
+        await u.save()
+        self.assertTrue(await u.exists())
 
-    def test_set_quota(self):
+    async def test_set_quota(self):
         user_id = id_generator()
         display_name = id_generator(25)
-        u = RGWUser.create(user_id=user_id, display_name=display_name)
+        u = await RGWUser.create(user_id=user_id, display_name=display_name)
         u.user_quota.size = 1024000
-        u.save()
-        nu = RGWUser.fetch(u.user_id)
+        await u.save()
+        nu = await RGWUser.fetch(u.user_id)
         self.assertTrue(u.user_quota.size == nu.user_quota.size)
-        nu.delete()
+        await nu.delete()
 
 
 if __name__ == '__main__':
