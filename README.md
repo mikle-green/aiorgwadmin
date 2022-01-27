@@ -12,34 +12,44 @@ http://docs.ceph.com/docs/master/radosgw/adminops/
 ## API Example Usage
 
 ```python
+import asyncio
 from aiorgwadmin import RGWAdmin
 
-rgw = RGWAdmin(access_key='XXX', secret_key='XXX', server='obj.example.com')
-rgw.create_user(
-    uid='liam',
-    display_name='Liam Monahan',
-    email='liam@umiacs.umd.edu',
-    user_caps='usage=read, write; users=read',
-    max_buckets=1000)
-rgw.set_user_quota(
-    uid='liam',
-    quota_type='user',
-    max_size_kb=1024 * 1024,
-    enabled=True)
-rgw.remove_user(uid='liam', purge_data=True)
+async def main():
+    rgw = RGWAdmin(access_key='XXX', secret_key='XXX', server='obj.example.com')
+    await rgw.create_user(
+        uid='liam',
+        display_name='Liam Monahan',
+        email='liam@umiacs.umd.edu',
+        user_caps='usage=read, write; users=read',
+        max_buckets=1000)
+    await rgw.set_user_quota(
+        uid='liam',
+        quota_type='user',
+        max_size_kb=1024 * 1024,
+        enabled=True)
+    await rgw.remove_user(uid='liam', purge_data=True)
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
 ```
 
 ## User Example Usage
 
 ```python
+import asyncio
 from aiorgwadmin import RGWAdmin, RGWUser
 
-RGWAdmin.connect(access_key='XXX', secret_key='XXX', server='obj.example.com')
-u = RGWUser.create(user_id='test', display_name='Test User')
-u.user_quota.size = 1024 * 1024  # in bytes
-u.user_quota.enabled = True
-u.save()
-u.delete()
+async def main():
+    RGWAdmin.connect(access_key='XXX', secret_key='XXX', server='obj.example.com')
+    u = await RGWUser.create(user_id='test', display_name='Test User')
+    u.user_quota.size = 1024 * 1024  # in bytes
+    u.user_quota.enabled = True
+    await u.save()
+    await u.delete()
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
 ```
 
 ## Requirements
