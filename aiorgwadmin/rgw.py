@@ -11,6 +11,7 @@ from typing import ClassVar, Union
 
 import aiohttp
 from awsauth import S3Auth
+from requests import Request
 
 from urllib.parse import quote
 from .exceptions import (
@@ -62,6 +63,8 @@ class RGWAdmin:
             self._protocol = 'http'
 
         self._timeout = timeout
+
+        self._auth = S3Auth(self._access_key, self._secret_key, self._server)
 
         if pool_connections:
             self._session = aiohttp.ClientSession()
@@ -157,13 +160,15 @@ class RGWAdmin:
         if self._ca_bundle:
             verify = self._ca_bundle
         else:
-            verify = self._verify
-        auth = S3Auth(self._access_key, self._secret_key, self._server)
+            verify = None if self._verify else False
+
+        # prepare headers for auth
+        prepped = Request(method, url, headers=headers, auth=self._auth).prepare()
 
         if self._session:
             # use connection pool
             async with self._session.request(
-                    method, url, headers=headers, auth=auth, verify=verify,
+                    method, url, headers=prepped.headers, ssl=verify,
                     data=data, timeout=self._timeout
             ) as response:
                 return await self._load_request(response)
@@ -171,7 +176,7 @@ class RGWAdmin:
             # do not use connection pool
             async with aiohttp.ClientSession() as session:
                 async with session.request(
-                        method, url, headers=headers, auth=auth, verify=verify,
+                        method, url, headers=prepped.headers, ssl=verify,
                         data=data, timeout=self._timeout
                 ) as response:
                     return await self._load_request(response)

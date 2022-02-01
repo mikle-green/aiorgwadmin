@@ -4,9 +4,9 @@ import logging
 import aiorgwadmin
 import unittest
 import random
+
 from aiorgwadmin.exceptions import InvalidArgument
-from aiorgwadmin.utils import get_environment_creds
-from . import create_bucket
+from . import create_bucket, get_environment_creds
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -99,7 +99,7 @@ class RGWAdminTest(unittest.IsolatedAsyncioTestCase):
     async def test_bucket_quota(self):
         size = random.randint(1000, 1000000)
         bucket_name = self.user1 + '_bucket'
-        await create_bucket(self.rgw, bucket=bucket_name)
+        await create_bucket(name=bucket_name)
         await self.rgw.set_bucket_quota(uid=self.user1, bucket=bucket_name,
                                   max_size_kb=size, enabled=True)
         bucket = await self.rgw.get_bucket(bucket=bucket_name)
@@ -107,7 +107,7 @@ class RGWAdminTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_bucket(self):
         bucket_name = self.user1 + '_bucket'
-        await create_bucket(self.rgw, bucket=bucket_name)
+        await create_bucket(name=bucket_name)
         bucket = await self.rgw.get_bucket(bucket=bucket_name)
         await self.rgw.link_bucket(bucket=bucket_name, bucket_id=bucket['id'],
                                    uid=self.user1)
