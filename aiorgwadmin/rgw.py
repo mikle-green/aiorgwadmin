@@ -108,10 +108,10 @@ class RGWAdmin:
         return '%s://%s' % (self._protocol, self._server)
 
     @staticmethod
-    async def _load_request(r):
+    async def _load_request(r: aiohttp.ClientResponse):
         '''Load the request given as JSON handling exceptions if necessary'''
         try:
-            j = await r.json()
+            j = await r.json(content_type=None)
         except ValueError:
             # some calls in the admin API encode the info in the headers
             # instead of the body.  The code that follows is an ugly hack
@@ -128,6 +128,7 @@ class RGWAdmin:
                     json_string = ":".join([k, v]).split('}')[0] + '}'
                     j = json.load(StringIO(json_string))
                     break
+
         if r.status == HTTPStatus.OK:
             return j
         elif r.status == HTTPStatus.NO_CONTENT:
@@ -137,6 +138,7 @@ class RGWAdmin:
                 code = str(j.get('Code', 'InternalError'))
             else:
                 raise ServerDown(None)
+
             for e in [AccessDenied, UserExists, InvalidAccessKey,
                       InvalidKeyType, InvalidSecretKey, KeyExists, EmailExists,
                       SubuserExists, InvalidAccess, InvalidArgument,
@@ -147,6 +149,7 @@ class RGWAdmin:
                       InternalError]:
                 if code == e.__name__:
                     raise e(j)
+
             raise RGWAdminException(code, raw=j)
 
     async def request(self, method, request, headers: Dict = None, data=None):
