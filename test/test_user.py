@@ -3,8 +3,10 @@
 import logging
 import aiorgwadmin
 import unittest
-from aiorgwadmin.utils import get_environment_creds, id_generator
+import uuid
+
 from aiorgwadmin.user import RGWUser
+from . import get_environment_creds
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -16,16 +18,16 @@ class RGWUserTest(unittest.IsolatedAsyncioTestCase):
         aiorgwadmin.RGWAdmin.set_connection(rgw)
 
     async def test_create_user(self):
-        user_id = id_generator()
-        display_name = id_generator(25)
+        user_id = f"bucket-{uuid.uuid4()}"
+        display_name = f"Test Create Bucket"
         u = await RGWUser.create(user_id=user_id, display_name=display_name)
         self.assertTrue(u.user_id == user_id and
                         u.display_name == display_name)
         await u.delete()
 
     async def test_user_exists(self):
-        user_id = id_generator()
-        display_name = id_generator(25)
+        user_id = f"bucket-{uuid.uuid4()}"
+        display_name = "Test User Exists"
         u = await RGWUser.create(user_id=user_id, display_name=display_name)
         self.assertTrue(await u.exists())
         await u.delete()
@@ -34,8 +36,8 @@ class RGWUserTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await u.exists())
 
     async def test_set_quota(self):
-        user_id = id_generator()
-        display_name = id_generator(25)
+        user_id = f"bucket-{uuid.uuid4()}"
+        display_name = "Test Set Quota"
         u = await RGWUser.create(user_id=user_id, display_name=display_name)
         u.user_quota.size = 1024000
         await u.save()

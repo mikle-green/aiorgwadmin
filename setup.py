@@ -17,6 +17,7 @@ with open(path.join(BASE_DIR, 'README.md'), encoding='utf-8') as f:
 
 install_requires = [
     "aiohttp",
+    "requests",
     "requests-aws",
 ]
 

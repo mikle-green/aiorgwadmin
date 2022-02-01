@@ -57,6 +57,7 @@ loop.run_until_complete(main())
 aiorgwadmin requires the following Python packages:
 
  * [aiohttp](https://docs.aiohttp.org)
+ * [requests](http://python-requests.org/)
  * [requests-aws](https://github.com/tax/python-requests-aws)
 
 Additionally, you need to have a [Ceph](http://www.ceph.org) Object Storage
