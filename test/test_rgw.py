@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import logging
-import aiorgwadmin
 import unittest
+import uuid
 import random
 
-from aiorgwadmin.exceptions import InvalidArgument
+import aiorgwadmin
 from . import create_bucket, get_environment_creds
 
 logging.basicConfig(level=logging.WARNING)
@@ -33,8 +33,8 @@ class RGWAdminTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(user2['user_id'] == self.user2)
 
     async def asyncTearDown(self):
-        await self.rgw.remove_user(uid=self.user1)
-        await self.rgw.remove_user(uid=self.user2)
+        await self.rgw.remove_user(uid=self.user1, purge_data=True)
+        await self.rgw.remove_user(uid=self.user2, purge_data=True)
         await self.rgw.close()
 
     async def test_modify_user(self):
@@ -68,7 +68,7 @@ class RGWAdminTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user['suspended'], 0)
 
     async def test_duplicate_email(self):
-        with self.assertRaises(InvalidArgument):
+        with self.assertRaises(aiorgwadmin.exceptions.EmailExists):
             await self.rgw.create_user(uid=self.user3,
                                        email='%s@example.com' % self.user1,
                                        display_name='Unit Test %s' % self.user3,
@@ -98,16 +98,16 @@ class RGWAdminTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_bucket_quota(self):
         size = random.randint(1000, 1000000)
-        bucket_name = self.user1 + '_bucket'
-        await create_bucket(name=bucket_name)
+        bucket_name = f"bucket-{uuid.uuid4()}"
+        await create_bucket(name=bucket_name, owner=self.user1)
         await self.rgw.set_bucket_quota(uid=self.user1, bucket=bucket_name,
                                   max_size_kb=size, enabled=True)
         bucket = await self.rgw.get_bucket(bucket=bucket_name)
         self.assertTrue(bucket['bucket_quota']['max_size_kb'] == size)
 
     async def test_bucket(self):
-        bucket_name = self.user1 + '_bucket'
-        await create_bucket(name=bucket_name)
+        bucket_name = f"bucket-{uuid.uuid4()}"
+        await create_bucket(name=bucket_name, owner=self.user1)
         bucket = await self.rgw.get_bucket(bucket=bucket_name)
         await self.rgw.link_bucket(bucket=bucket_name, bucket_id=bucket['id'],
                                    uid=self.user1)
