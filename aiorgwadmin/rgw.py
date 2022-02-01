@@ -63,11 +63,14 @@ class RGWAdmin:
             self._protocol = 'http'
 
         self._timeout = timeout
+        self._skip_auto_headers = ["Content-Type"]
 
         self._auth = S3Auth(self._access_key, self._secret_key, self._server)
 
         if pool_connections:
-            self._session = aiohttp.ClientSession()
+            self._session = aiohttp.ClientSession(
+                skip_auto_headers=self._skip_auto_headers
+            )
 
     async def close(self):
         if self._session:
@@ -152,7 +155,7 @@ class RGWAdmin:
 
             raise RGWAdminException(code, raw=j)
 
-    async def request(self, method, request, headers: Dict = None, data=None):
+    async def request(self, method: str, request: str, headers: Dict = None, data=None):
         url = '%s%s' % (self.get_base_url(), request)
         log.debug('URL: %s' % url)
         log.debug('Access Key: %s' % self._access_key)
@@ -180,7 +183,8 @@ class RGWAdmin:
             async with aiohttp.ClientSession() as session:
                 async with session.request(
                         method, url, headers=prepped.headers, ssl=verify,
-                        data=data, timeout=self._timeout
+                        data=data, timeout=self._timeout,
+                        skip_auto_headers=self._skip_auto_headers
                 ) as response:
                     return await self._load_request(response)
 
