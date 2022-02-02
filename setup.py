@@ -33,10 +33,7 @@ setup(
     zip_safe=False,
     version=version,
     install_requires=install_requires,
-    author="Derek Yarnell, Mikle",
-    author_email="derek@umiacs.umd.edu",
-    maintainer="UMIACS Staff",
-    maintainer_email="github@umiacs.umd.edu",
+    author="Derek Yarnell <derek@umiacs.umd.edu>, Mikle Green",
     url="https://github.com/mikle-green/aiorgwadmin",
     license="LGPL v2.1",
     description="Python Rados Gateway Admin API",
@@ -46,8 +43,9 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.9',
     ],
+    python_requires=">=3.6",
     **extra
 )
