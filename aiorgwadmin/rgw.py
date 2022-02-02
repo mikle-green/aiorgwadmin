@@ -170,22 +170,30 @@ class RGWAdmin:
 
         # prepare headers for auth
         prepped = Request(method, url, headers=headers, auth=self._auth).prepare()
+        prepped_headers = prepped.headers
+
+        if data is not None:
+            prepped_headers["Content-Length"] = str(len(data))
+
+        request_params = {
+            "method": method,
+            "url": url,
+            "headers": prepped_headers,
+            "ssl": verify,
+            "data": data,
+            "timeout": self._timeout
+        }
 
         if self._session:
             # use connection pool
-            async with self._session.request(
-                    method, url, headers=prepped.headers, ssl=verify,
-                    data=data, timeout=self._timeout
-            ) as response:
+            async with self._session.request(**request_params) as response:
                 return await self._load_request(response)
         else:
             # do not use connection pool
-            async with aiohttp.ClientSession() as session:
-                async with session.request(
-                        method, url, headers=prepped.headers, ssl=verify,
-                        data=data, timeout=self._timeout,
-                        skip_auto_headers=self._skip_auto_headers
-                ) as response:
+            async with aiohttp.ClientSession(
+                    skip_auto_headers=self._skip_auto_headers
+            ) as session:
+                async with session.request(**request_params) as response:
                     return await self._load_request(response)
 
     async def _request_metadata(self, method, metadata_type, params=None,
