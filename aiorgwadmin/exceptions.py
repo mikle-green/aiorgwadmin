@@ -5,11 +5,12 @@ aiorgwadmin.exceptions
 This module contains the aiorgwadmin exceptions.
 
 """
+from typing import Any
 
 
 class RGWAdminException(Exception):
     """There was a unlabeled exception that was raised during your request"""
-    def __init__(self, code, raw=None):
+    def __init__(self, code: Any, raw: Any = None) -> None:
         self.code = code
         self.raw = raw
 

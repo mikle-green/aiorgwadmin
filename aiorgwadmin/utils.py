@@ -1,8 +1,9 @@
 import string
 import random
+from collections.abc import Sequence
 
 
-def random_password(size=40, chars=None):
+def random_password(size: int = 40, chars: Sequence | None = None) -> str:
     '''Return a random password string.
 
     The default length is 32 characters.  Different character classes can be

@@ -1,19 +1,19 @@
-import time
 import json
-from io import StringIO
 import logging
-import string
 import random
+import string
+import time
+from collections.abc import Sequence
+from datetime import datetime
 from http import HTTPStatus
-
-from typing import Dict
-from typing import ClassVar, Union
+from io import StringIO
+from typing import Any, ClassVar, Final, Union
+from urllib.parse import quote
 
 import aiohttp
 from awsauth import S3Auth
 from requests import Request
 
-from urllib.parse import quote
 from .exceptions import (
     RGWAdminException, AccessDenied, UserExists,
     InvalidAccessKey, InvalidSecretKey, InvalidKeyType,
@@ -22,11 +22,11 @@ from .exceptions import (
     BucketUnlinkFailed, BucketLinkFailed, NoSuchObject,
     IncompleteBody, InvalidCap, NoSuchCap,
     InternalError, NoSuchUser, NoSuchBucket, NoSuchKey,
-    ServerDown, InvalidQuotaType, InvalidArgument, BucketAlreadyExists
+    ServerDown, InvalidQuotaType, InvalidArgument, BucketAlreadyExists,
 )
 
-log = logging.getLogger(__name__)
-LETTERS = string.ascii_letters
+log: Final = logging.getLogger(__name__)
+LETTERS: Final = string.ascii_letters
 
 
 class RGWAdmin:
@@ -35,18 +35,28 @@ class RGWAdmin:
     _server: str
     _admin: str
     _response: str
-    _ca_bundle: str
+    _ca_bundle: str | None
     _verify: bool
     _protocol: str
-    _timeout: int
+    _timeout: float | None
 
     connection: ClassVar['RGWAdmin']
 
-    metadata_types = ['user', 'bucket', 'bucket.instance']
+    metadata_types: ClassVar[list[str]] = ['user', 'bucket', 'bucket.instance']
 
-    def __init__(self, access_key, secret_key, server,
-                 admin='admin', response='json', ca_bundle=None,
-                 secure=True, verify=True, timeout=None, pool_connections=False):
+    def __init__(
+        self,
+        access_key: str,
+        secret_key: str,
+        server: str,
+        admin: str = 'admin',
+        response: str = 'json',
+        ca_bundle: str | None = None,
+        secure: bool = True,
+        verify: bool = True,
+        timeout: float | None = None,
+        pool_connections: bool = False,
+    ) -> None:
         self._access_key = access_key
         self._secret_key = secret_key
         self._server = server
@@ -68,24 +78,22 @@ class RGWAdmin:
         self._auth = S3Auth(self._access_key, self._secret_key, self._server)
 
         if pool_connections:
-            self._session = aiohttp.ClientSession(
-                skip_auto_headers=self._skip_auto_headers
-            )
+            self._session = aiohttp.ClientSession(skip_auto_headers=self._skip_auto_headers)
 
-    async def close(self):
+    async def close(self) -> None:
         if self._session:
             await self._session.close()
 
     @classmethod
-    def connect(cls, **kwargs):
+    def connect(cls, **kwargs: Any) -> None:
         """Establish a new connection to RGWAdmin
 
         Only one connection can be active in any single process
         """
-        cls.set_connection(RGWAdmin(**kwargs))
+        cls.set_connection(cls(**kwargs))
 
     @classmethod
-    def set_connection(cls, connection: 'RGWAdmin'):
+    def set_connection(cls, connection: 'RGWAdmin') -> None:
         """Set a connection for the RGWAdmin session to use."""
         cls.connection = connection
 
@@ -94,10 +102,10 @@ class RGWAdmin:
         """Return the RGWAdmin connection that was set"""
         return cls.connection
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s (%s)" % (self.__class__.__name__, self.get_base_url())
 
-    def __str__(self):
+    def __str__(self) -> str:
         returning = self.__repr__()
         returning += '\nAccess Key: %s\n' % self._access_key
         returning += 'Secret Key: ******\n'
@@ -111,7 +119,7 @@ class RGWAdmin:
         return '%s://%s' % (self._protocol, self._server)
 
     @staticmethod
-    async def _load_request(r: aiohttp.ClientResponse):
+    async def _load_request(r: aiohttp.ClientResponse) -> Any:
         '''Load the request given as JSON handling exceptions if necessary'''
         try:
             j = await r.json(content_type=None)
@@ -140,7 +148,7 @@ class RGWAdmin:
             if j is not None:
                 code = str(j.get('Code', 'InternalError'))
             else:
-                raise ServerDown(None)
+                raise ServerDown(r.status)
 
             for e in [AccessDenied, UserExists, InvalidAccessKey,
                       InvalidKeyType, InvalidSecretKey, KeyExists, EmailExists,
@@ -155,12 +163,11 @@ class RGWAdmin:
 
             raise RGWAdminException(code, raw=j)
 
-    async def request(self, method: str, request: str, headers: Dict = None, data=None):
+    async def request(self, method: str, request: str, headers: dict | None = None, data: Any = None) -> Any:
         url = '%s%s' % (self.get_base_url(), request)
         log.debug('URL: %s' % url)
         log.debug('Access Key: %s' % self._access_key)
-        log.debug('Verify: %s  CA Bundle: %s' % (self._verify,
-                                                 self._ca_bundle))
+        log.debug('Verify: %s  CA Bundle: %s' % (self._verify, self._ca_bundle))
 
         verify: Union[bool, str, None] = None
         if self._ca_bundle:
@@ -196,8 +203,14 @@ class RGWAdmin:
                 async with session.request(**request_params) as response:
                     return await self._load_request(response)
 
-    async def _request_metadata(self, method, metadata_type, params=None,
-                          headers=None, data=None):
+    async def _request_metadata(
+        self,
+        method: str,
+        metadata_type: str,
+        params: dict | None = None,
+        headers: dict | None = None,
+        data: Any = None,
+    ) -> Any:
         if metadata_type not in self.metadata_types:
             raise Exception("Bad metadata_type")
 
@@ -209,11 +222,17 @@ class RGWAdmin:
             method=method,
             request=request,
             headers=headers,
-            data=data
+            data=data,
         )
 
-    async def get_metadata(self, metadata_type, key=None, max_entries=None,
-                     marker=None, headers=None):
+    async def get_metadata(
+        self,
+        metadata_type: str,
+        key: str | None = None,
+        max_entries: int | None = None,
+        marker: str | None = None,
+        headers: dict | None = None,
+    ) -> Any:
         ''' Returns a JSON object representation of the metadata '''
         params = {'format': self._response}
         if key is not None:
@@ -229,30 +248,31 @@ class RGWAdmin:
             headers=headers,
         )
 
-    async def put_metadata(self, metadata_type, key, json_string):
+    async def put_metadata(self, metadata_type: str, key: str, json_string: str) -> Any:
         return await self._request_metadata(
             method='put',
             metadata_type=metadata_type,
             params={'key': key},
             headers={'Content-Type': 'application/json'},
-            data=json_string)
+            data=json_string,
+        )
 
     # Alias for compatability:
     set_metadata = put_metadata
 
-    async def delete_metadata(self, metadata_type, key):
+    async def delete_metadata(self, metadata_type: str, key: str) -> Any:
         return await self._request_metadata(
             method='delete',
             metadata_type=metadata_type,
             params={'key': key},
         )
 
-    async def lock_metadata(self, metadata_type, key, lock_id, length):
+    async def lock_metadata(self, metadata_type: str, key: str, lock_id: str, length: int) -> Any:
         params = {
             'lock': 'lock',
             'key': key,
             'lock_id': lock_id,
-            'length': int(length),
+            'length': length,
         }
         return await self._request_metadata(
             method='post',
@@ -260,7 +280,7 @@ class RGWAdmin:
             params=params,
         )
 
-    async def unlock_metadata(self, metadata_type: str, key, lock_id):
+    async def unlock_metadata(self, metadata_type: str, key: str, lock_id: str) -> Any:
         params = {
             'unlock': 'unlock',
             'key': key,
@@ -272,8 +292,13 @@ class RGWAdmin:
             params=params,
         )
 
-    async def get_user(self, uid: str = None, access_key: str = None, stats=False,
-                 sync=False):
+    async def get_user(
+        self,
+        uid: str | None = None,
+        access_key: str | None = None,
+        stats: bool = False,
+        sync: bool = False,
+    ) -> Any:
         if uid is not None and access_key is not None:
             raise ValueError('Only one of uid and access_key is allowed')
         parameters = ''
@@ -282,15 +307,24 @@ class RGWAdmin:
         if access_key is not None:
             parameters += '&access-key=%s' % access_key
         parameters += '&stats=%s&sync=%s' % (stats, sync)
-        return await self.request('get', '/%s/user?format=%s%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('get', '/%s/user?format=%s%s' % (self._admin, self._response, parameters))
 
-    async def get_users(self):
+    async def get_users(self) -> Any:
         return await self.get_metadata(metadata_type='user')
 
-    async def create_user(self, uid, display_name, email=None, key_type='s3',
-                    access_key=None, secret_key=None, user_caps=None,
-                    generate_key=True, max_buckets=None, suspended=False):
+    async def create_user(
+        self,
+        uid: str,
+        display_name: str,
+        email: str | None = None,
+        key_type: str = 's3',
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        user_caps: str | None = None,
+        generate_key: bool = True,
+        max_buckets: int | None = None,
+        suspended: bool = False,
+    ) -> Any:
         parameters = 'uid=%s&display-name=%s' % (uid, display_name)
         if email is not None:
             parameters += '&email=%s' % email
@@ -306,11 +340,16 @@ class RGWAdmin:
         if max_buckets is not None:
             parameters += '&max-buckets=%s' % max_buckets
         parameters += '&suspended=%s' % suspended
-        return await self.request('put', '/%s/user?format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('put', '/%s/user?format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def get_usage(self, uid=None, start=None, end=None, show_entries=False,
-                  show_summary=False):
+    async def get_usage(
+        self,
+        uid: str | None = None,
+        start: str | datetime | None = None,
+        end: str | datetime | None = None,
+        show_entries: bool = False,
+        show_summary: bool = False,
+    ) -> Any:
         parameters = ''
         if uid is not None:
             parameters += '&uid=%s' % uid
@@ -320,10 +359,15 @@ class RGWAdmin:
             parameters += '&end=%s' % end
         parameters += '&show-entries=%s' % show_entries
         parameters += '&show-summary=%s' % show_summary
-        return await self.request('get', '/%s/usage?format=%s%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('get', '/%s/usage?format=%s%s' % (self._admin, self._response, parameters))
 
-    async def trim_usage(self, uid=None, start=None, end=None, remove_all=False):
+    async def trim_usage(
+        self,
+        uid: str | None = None,
+        start: str | datetime | None = None,
+        end: str | datetime | None = None,
+        remove_all: bool = False,
+    ) -> Any:
         parameters = ''
         if uid is not None:
             parameters += '&uid=%s' % uid
@@ -332,12 +376,21 @@ class RGWAdmin:
         if end is not None:
             parameters += '&end=%s' % end
         parameters += '&remove-all=%s' % remove_all
-        return await self.request('delete', '/%s/usage?format=%s%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('delete', '/%s/usage?format=%s%s' % (self._admin, self._response, parameters))
 
-    async def modify_user(self, uid, display_name=None, email=None, key_type='s3',
-                    access_key=None, secret_key=None, user_caps=None,
-                    generate_key=False, max_buckets=None, suspended=None):
+    async def modify_user(
+        self,
+        uid: str,
+        display_name: str | None = None,
+        email: str | None = None,
+        key_type: str = 's3',
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        user_caps: str | None = None,
+        generate_key: bool = False,
+        max_buckets: int | None = None,
+        suspended: bool | None = None,
+    ) -> Any:
         parameters = 'uid=%s' % uid
         if display_name is not None:
             parameters += '&display-name=%s' % display_name
@@ -356,25 +409,23 @@ class RGWAdmin:
             parameters += '&max-buckets=%s' % max_buckets
         if suspended is not None:
             parameters += '&suspended=%s' % suspended
-        return await self.request('post', '/%s/user?format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('post', '/%s/user?format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def get_quota(self, uid, quota_type):
+    async def get_quota(self, uid: str, quota_type: str) -> Any:
         if quota_type not in ['user', 'bucket']:
             raise InvalidQuotaType
         parameters = 'uid=%s&quota-type=%s' % (uid, quota_type)
-        return await self.request('get', '/%s/user?quota&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('get', '/%s/user?quota&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def get_user_quota(self, uid):
+    async def get_user_quota(self, uid: str) -> Any:
         return await self.get_quota(uid=uid, quota_type='user')
 
-    async def get_user_bucket_quota(self, uid):
+    async def get_user_bucket_quota(self, uid: str) -> Any:
         '''Return the quota set on every bucket owned/created by a user'''
         return await self.get_quota(uid=uid, quota_type='bucket')
 
     @staticmethod
-    def _quota(max_size_kb=None, max_objects=None, enabled=None):
+    def _quota(max_size_kb: int | None = None, max_objects: int | None = None, enabled: bool | None = None) -> str:
         quota = ''
         if max_size_kb is not None:
             quota += '&max-size-kb=%d' % max_size_kb
@@ -384,8 +435,14 @@ class RGWAdmin:
             quota += '&enabled=%s' % str(enabled).lower()
         return quota
 
-    async def set_user_quota(self, uid, quota_type, max_size_kb=None,
-                       max_objects=None, enabled=None):
+    async def set_user_quota(
+        self,
+        uid: str,
+        quota_type: str,
+        max_size_kb: int | None = None,
+        max_objects: int | None = None,
+        enabled: bool | None = None,
+    ) -> Any:
         '''
         Set quotas on users and buckets owned by users
 
@@ -398,30 +455,38 @@ class RGWAdmin:
         '''
         if quota_type not in ['user', 'bucket']:
             raise InvalidQuotaType
-        quota = self._quota(max_size_kb=max_size_kb, max_objects=max_objects,
-                            enabled=enabled)
+        quota = self._quota(max_size_kb=max_size_kb, max_objects=max_objects, enabled=enabled)
         parameters = 'uid=%s&quota-type=%s%s' % (uid, quota_type, quota)
-        return await self.request('put', '/%s/user?quota&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('put', '/%s/user?quota&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def set_bucket_quota(self, uid, bucket, max_size_kb=None,
-                         max_objects=None, enabled=None):
+    async def set_bucket_quota(
+        self,
+        uid: str,
+        bucket: str,
+        max_size_kb: int | None = None,
+        max_objects: int | None = None,
+        enabled: bool | None = None,
+    ) -> Any:
         '''Set the quota on an individual bucket'''
-        quota = self._quota(max_size_kb=max_size_kb, max_objects=max_objects,
-                            enabled=enabled)
+        quota = self._quota(max_size_kb=max_size_kb, max_objects=max_objects, enabled=enabled)
         parameters = 'uid=%s&bucket=%s%s' % (uid, bucket, quota)
-        return await self.request('put', '/%s/bucket?quota&format=%s&%s' %
-                            (self._admin, self._response, parameters))
+        return await self.request('put', '/%s/bucket?quota&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_user(self, uid, purge_data=False):
+    async def remove_user(self, uid: str, purge_data: bool = False) -> Any:
         parameters = 'uid=%s' % uid
         parameters += '&purge-data=%s' % purge_data
-        return await self.request('delete', '/%s/user?format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('delete', '/%s/user?format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def create_subuser(self, uid, subuser=None, secret_key=None,
-                       access_key=None, key_type=None, access=None,
-                       generate_secret=False):
+    async def create_subuser(
+        self,
+        uid: str,
+        subuser: str | None = None,
+        secret_key: str | None = None,
+        access_key: str | None = None,
+        key_type: str | None = None,
+        access: str | None = None,
+        generate_secret: bool = False,
+    ) -> Any:
         parameters = 'uid=%s' % uid
         if subuser is not None:
             parameters += '&subuser=%s' % subuser
@@ -433,11 +498,17 @@ class RGWAdmin:
         if access is not None:
             parameters += '&access=%s' % access
         parameters += '&generate-secret=%s' % generate_secret
-        return await self.request('put', '/%s/user?subuser&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('put', '/%s/user?subuser&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def modify_subuser(self, uid, subuser, secret=None, key_type='swift',
-                       access=None, generate_secret=False):
+    async def modify_subuser(
+        self,
+        uid: str,
+        subuser: str,
+        secret: str | None = None,
+        key_type: str = 'swift',
+        access: str | None = None,
+        generate_secret: bool = False,
+    ) -> Any:
         parameters = 'uid=%s&subuser=%s' % (uid, subuser)
         if secret is not None:
             parameters += '&secret=%s' % secret
@@ -445,17 +516,21 @@ class RGWAdmin:
         if access is not None:
             parameters += '&access=%s' % access
         parameters += '&generate-secret=%s' % generate_secret
-        return await self.request('post', '/%s/user?subuser&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('post', '/%s/user?subuser&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_subuser(self, uid, subuser, purge_keys=True):
-        parameters = 'uid=%s&subuser=%s&purge-keys=%s' % (uid, subuser,
-                                                          purge_keys)
-        return await self.request('delete', '/%s/user?subuser&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+    async def remove_subuser(self, uid: str, subuser: str, purge_keys: bool = True) -> Any:
+        parameters = 'uid=%s&subuser=%s&purge-keys=%s' % (uid, subuser, purge_keys)
+        return await self.request('delete', '/%s/user?subuser&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def create_key(self, uid, subuser=None, key_type='s3', access_key=None,
-                   secret_key=None, generate_key=True):
+    async def create_key(
+        self,
+        uid: str,
+        subuser: str | None = None,
+        key_type: str = 's3',
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        generate_key: bool = True,
+    ) -> Any:
         parameters = 'uid=%s' % uid
         if subuser is not None:
             parameters += '&subuser=%s' % subuser
@@ -465,90 +540,84 @@ class RGWAdmin:
         if secret_key is not None:
             parameters += '&secret-key=%s' % secret_key
         parameters += '&generate-key=%s' % generate_key
-        return await self.request('put', '/%s/user?key&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('put', '/%s/user?key&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_key(self, access_key, key_type=None, uid=None, subuser=None):
-        parameters = 'access-key=%s' % (access_key)
+    async def remove_key(
+        self,
+        access_key: str,
+        key_type: str | None = None,
+        uid: str | None = None,
+        subuser: str | None = None,
+    ) -> Any:
+        parameters = 'access-key=%s' % access_key
         if key_type is not None:
             parameters += '&key-type=%s' % key_type
         if uid is not None:
             parameters += '&uid=%s' % uid
         if subuser is not None:
             parameters += '&subuser=%s' % subuser
-        return await self.request('delete', '/%s/user?key&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('delete', '/%s/user?key&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def get_buckets(self):
+    async def get_buckets(self) -> Any:
         '''Returns a list of all buckets in the radosgw'''
         return await self.get_metadata(metadata_type='bucket')
 
-    async def get_bucket(self, bucket=None, uid=None, stats=False):
+    async def get_bucket(self, bucket: str | None = None, uid: str | None = None, stats: bool = False) -> Any:
         parameters = ''
         if bucket is not None:
             parameters += '&bucket=%s' % bucket
         if uid is not None:
             parameters += '&uid=%s' % uid
         parameters += '&stats=%s' % stats
-        return await self.request('get', '/%s/bucket?format=%s%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('get', '/%s/bucket?format=%s%s' % (self._admin, self._response, parameters))
 
-    async def check_bucket_index(self, bucket, check_objects=False, fix=False):
+    async def check_bucket_index(self, bucket: str, check_objects: bool = False, fix: bool = False) -> Any:
         parameters = 'bucket=%s' % bucket
         parameters += '&check-objects=%s' % check_objects
         parameters += '&fix=%s' % fix
-        return await self.request('get', '/%s/bucket?index&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('get', '/%s/bucket?index&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_bucket(self, bucket, purge_objects=False):
+    async def remove_bucket(self, bucket: str, purge_objects: bool = False) -> Any:
         parameters = 'bucket=%s' % bucket
         parameters += '&purge-objects=%s' % purge_objects
-        return await self.request('delete', '/%s/bucket?format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('delete', '/%s/bucket?format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def unlink_bucket(self, bucket, uid):
+    async def unlink_bucket(self, bucket: str, uid: str) -> Any:
         parameters = 'bucket=%s&uid=%s' % (bucket, uid)
-        return await self.request('post', '/%s/bucket?format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('post', '/%s/bucket?format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def link_bucket(self, bucket, bucket_id, uid):
+    async def link_bucket(self, bucket: str, bucket_id: str, uid: str) -> Any:
         # note that even though the Ceph docs say that bucket-id is optional
         # the API call will fail (InvalidArgument) if it is omitted.
-        parameters = 'bucket=%s&bucket-id=%s&uid=%s' % \
-            (bucket, bucket_id, uid)
-        return await self.request('put', '/%s/bucket?format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        parameters = 'bucket=%s&bucket-id=%s&uid=%s' % (bucket, bucket_id, uid)
+        return await self.request('put', '/%s/bucket?format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_object(self, bucket, object_name):
+    async def remove_object(self, bucket: str, object_name: str) -> Any:
         parameters = 'bucket=%s&object=%s' % (bucket, object_name)
-        return await self.request('delete', '/%s/bucket?object&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('delete', '/%s/bucket?object&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def get_policy(self, bucket, object_name=None):
+    async def get_policy(self, bucket: str, object_name: str | None = None) -> Any:
         parameters = 'bucket=%s' % bucket
         if object_name is not None:
             parameters += '&object=%s' % object_name
-        return await self.request('get', '/%s/bucket?policy&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('get', '/%s/bucket?policy&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def add_capability(self, uid, user_caps):
+    async def add_capability(self, uid: str, user_caps: str) -> Any:
         parameters = 'uid=%s&user-caps=%s' % (uid, user_caps)
-        return await self.request('put', '/%s/user?caps&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('put', '/%s/user?caps&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_capability(self, uid, user_caps):
+    async def remove_capability(self, uid: str, user_caps: str) -> Any:
         parameters = 'uid=%s&user-caps=%s' % (uid, user_caps)
-        return await self.request('delete', '/%s/user?caps&format=%s&%s' %
-                                  (self._admin, self._response, parameters))
+        return await self.request('delete', '/%s/user?caps&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def get_bucket_instances(self):
+    async def get_bucket_instances(self) -> Any:
         '''Returns a list of all bucket instances in the radosgw'''
         return await self.get_metadata(metadata_type='bucket.instance')
 
     @staticmethod
-    def parse_rados_datestring(s):
+    def parse_rados_datestring(s: str) -> time.struct_time:
         return time.strptime(s, "%Y-%m-%dT%H:%M:%S.%fZ")
 
     @staticmethod
-    def gen_secret_key(size=40, chars=LETTERS + string.digits):
-        return ''.join(random.choice(chars) for x in range(size))
+    def gen_secret_key(size: int = 40, chars: Sequence = LETTERS + string.digits) -> str:
+        return ''.join(random.choice(chars) for _ in range(size))

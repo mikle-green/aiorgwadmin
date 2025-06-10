@@ -5,14 +5,14 @@ stages:
 
 mypy:
   stage: test
-  image: python:3.6-slim
+  image: python:3.10-slim
   script:
     - pip install -q tox
     - tox -e mypy
 
 build_python_package:
   stage: build
-  image: python:3.6-slim
+  image: python:3.10-slim
   script:
     - pip install -q -U setuptools wheel
     - python setup.py sdist bdist_wheel
@@ -51,7 +51,7 @@ build_rpm_rhel8:
 
 upload_pypi:
   stage: deploy
-  image: python:3.6-slim
+  image: python:3.10-slim
   script:
     - pip install -q twine
     - twine check dist/*
