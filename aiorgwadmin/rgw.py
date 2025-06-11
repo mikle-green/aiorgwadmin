@@ -7,10 +7,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from http import HTTPStatus
 from io import StringIO
-from typing import Any, ClassVar, Final, Union
+from ssl import SSLContext
+from typing import Any, ClassVar, Final
 from urllib.parse import quote
 
-import aiohttp
+from aiohttp import ClientResponse, ClientSession, TCPConnector
 from awsauth import S3Auth
 from requests import Request
 
@@ -35,10 +36,11 @@ class RGWAdmin:
     _server: str
     _admin: str
     _response: str
-    _ca_bundle: str | None
+    _ssl_context: SSLContext | None
     _verify: bool
     _protocol: str
     _timeout: float | None
+    _session: ClientSession | None
 
     connection: ClassVar['RGWAdmin']
 
@@ -51,7 +53,7 @@ class RGWAdmin:
         server: str,
         admin: str = 'admin',
         response: str = 'json',
-        ca_bundle: str | None = None,
+        ssl_context: SSLContext | None = None,
         secure: bool = True,
         verify: bool = True,
         timeout: float | None = None,
@@ -65,7 +67,7 @@ class RGWAdmin:
         self._session = None
 
         # ssl support
-        self._ca_bundle = ca_bundle
+        self._ssl_context = ssl_context
         self._verify = verify
         if secure:
             self._protocol = 'https'
@@ -78,11 +80,19 @@ class RGWAdmin:
         self._auth = S3Auth(self._access_key, self._secret_key, self._server)
 
         if pool_connections:
-            self._session = aiohttp.ClientSession(skip_auto_headers=self._skip_auto_headers)
+            self._session = self._get_session()
 
     async def close(self) -> None:
         if self._session:
             await self._session.close()
+
+    def _get_session(self) -> ClientSession:
+        if self._ssl_context:
+            ssl = self._ssl_context
+        else:
+            ssl = self._verify
+
+        return ClientSession(connector=TCPConnector(ssl=ssl), skip_auto_headers=self._skip_auto_headers)
 
     @classmethod
     def connect(cls, **kwargs: Any) -> None:
@@ -110,8 +120,8 @@ class RGWAdmin:
         returning += '\nAccess Key: %s\n' % self._access_key
         returning += 'Secret Key: ******\n'
         returning += 'Response Method: %s\n' % self._response
-        if self._ca_bundle is not None:
-            returning += 'CA Bundle: %s\n' % self._ca_bundle
+        if self._ssl_context is not None:
+            returning += 'SSL Context: %s\n' % self._ssl_context
         return returning
 
     def get_base_url(self) -> str:
@@ -119,7 +129,7 @@ class RGWAdmin:
         return '%s://%s' % (self._protocol, self._server)
 
     @staticmethod
-    async def _load_request(r: aiohttp.ClientResponse) -> Any:
+    async def _load_request(r: ClientResponse) -> Any:
         '''Load the request given as JSON handling exceptions if necessary'''
         try:
             j = await r.json(content_type=None)
@@ -167,13 +177,7 @@ class RGWAdmin:
         url = '%s%s' % (self.get_base_url(), request)
         log.debug('URL: %s' % url)
         log.debug('Access Key: %s' % self._access_key)
-        log.debug('Verify: %s  CA Bundle: %s' % (self._verify, self._ca_bundle))
-
-        verify: Union[bool, str, None] = None
-        if self._ca_bundle:
-            verify = self._ca_bundle
-        else:
-            verify = None if self._verify else False
+        log.debug('Verify: %s, SSL Context: %s' % (self._verify, self._ssl_context))
 
         # prepare headers for auth
         prepped = Request(method, url, headers=headers, auth=self._auth).prepare()
@@ -186,7 +190,6 @@ class RGWAdmin:
             "method": method,
             "url": url,
             "headers": prepped_headers,
-            "ssl": verify,
             "data": data,
             "timeout": self._timeout
         }
@@ -197,9 +200,7 @@ class RGWAdmin:
                 return await self._load_request(response)
         else:
             # do not use connection pool
-            async with aiohttp.ClientSession(
-                    skip_auto_headers=self._skip_auto_headers
-            ) as session:
+            async with self._get_session() as session:
                 async with session.request(**request_params) as response:
                     return await self._load_request(response)
 
