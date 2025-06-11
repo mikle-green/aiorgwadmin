@@ -11,7 +11,7 @@ from ssl import SSLContext
 from typing import Any, ClassVar, Final
 from urllib.parse import quote
 
-from aiohttp import ClientResponse, ClientSession, TCPConnector
+from aiohttp import ClientResponse, ClientSession, ClientTimeout, TCPConnector
 from awsauth import S3Auth
 from requests import Request
 
@@ -92,7 +92,11 @@ class RGWAdmin:
         else:
             ssl = self._verify
 
-        return ClientSession(connector=TCPConnector(ssl=ssl), skip_auto_headers=self._skip_auto_headers)
+        return ClientSession(
+            connector=TCPConnector(ssl=ssl),
+            skip_auto_headers=self._skip_auto_headers,
+            timeout=ClientTimeout(self._timeout),
+        )
 
     @classmethod
     def connect(cls, **kwargs: Any) -> None:
@@ -191,7 +195,6 @@ class RGWAdmin:
             "url": url,
             "headers": prepped_headers,
             "data": data,
-            "timeout": self._timeout
         }
 
         if self._session:
