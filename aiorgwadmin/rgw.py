@@ -82,6 +82,12 @@ class RGWAdmin:
         if pool_connections:
             self._session = self._get_session()
 
+    async def __aenter__(self) -> 'RGWAdmin':
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
+
     async def close(self) -> None:
         if self._session:
             await self._session.close()
