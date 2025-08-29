@@ -435,10 +435,18 @@ class RGWAdmin:
         return await self.get_quota(uid=uid, quota_type='bucket')
 
     @staticmethod
-    def _quota(max_size_kb: int | None = None, max_objects: int | None = None, enabled: bool | None = None) -> str:
+    def _quota(
+        max_size: int | None = None,
+        max_size_kb: int | None = None,
+        max_objects: int | None = None,
+        enabled: bool | None = None,
+    ) -> str:
         quota = ''
-        if max_size_kb is not None:
+        if max_size is not None:
+            quota += '&max-size=%d' % max_size
+        elif max_size_kb is not None:
             quota += '&max-size-kb=%d' % max_size_kb
+
         if max_objects is not None:
             quota += '&max-objects=%d' % max_objects
         if enabled is not None:
@@ -449,6 +457,7 @@ class RGWAdmin:
         self,
         uid: str,
         quota_type: str,
+        max_size: int | None = None,
         max_size_kb: int | None = None,
         max_objects: int | None = None,
         enabled: bool | None = None,
@@ -465,7 +474,7 @@ class RGWAdmin:
         '''
         if quota_type not in ['user', 'bucket']:
             raise InvalidQuotaType
-        quota = self._quota(max_size_kb=max_size_kb, max_objects=max_objects, enabled=enabled)
+        quota = self._quota(max_size=max_size, max_size_kb=max_size_kb, max_objects=max_objects, enabled=enabled)
         parameters = 'uid=%s&quota-type=%s%s' % (uid, quota_type, quota)
         return await self.request('put', '/%s/user?quota&format=%s&%s' % (self._admin, self._response, parameters))
 
@@ -473,12 +482,13 @@ class RGWAdmin:
         self,
         uid: str,
         bucket: str,
+        max_size: int | None = None,
         max_size_kb: int | None = None,
         max_objects: int | None = None,
         enabled: bool | None = None,
     ) -> Any:
         '''Set the quota on an individual bucket'''
-        quota = self._quota(max_size_kb=max_size_kb, max_objects=max_objects, enabled=enabled)
+        quota = self._quota(max_size=max_size, max_size_kb=max_size_kb, max_objects=max_objects, enabled=enabled)
         parameters = 'uid=%s&bucket=%s%s' % (uid, bucket, quota)
         return await self.request('put', '/%s/bucket?quota&format=%s&%s' % (self._admin, self._response, parameters))
 

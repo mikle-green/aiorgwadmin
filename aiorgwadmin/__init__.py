@@ -1,5 +1,5 @@
 __title__ = 'aiorgwadmin'
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 __author__ = 'Derek Yarnell, Mikle Green'
 __license__ = 'LGPL v2.1'
 
