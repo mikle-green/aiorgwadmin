@@ -44,7 +44,7 @@ class RGWAdmin:
 
     connection: ClassVar['RGWAdmin']
 
-    metadata_types: ClassVar[list[str]] = ['user', 'bucket', 'bucket.instance']
+    metadata_types: ClassVar[list[str]] = ['user', 'bucket', 'bucket.instance', 'account']
 
     def __init__(
         self,
@@ -308,11 +308,14 @@ class RGWAdmin:
         access_key: str | None = None,
         stats: bool = False,
         sync: bool = False,
+        tenant: str | None = None,
     ) -> Any:
         if uid is not None and access_key is not None:
             raise ValueError('Only one of uid and access_key is allowed')
         parameters = ''
         if uid is not None:
+            if tenant is not None:
+                uid = f"{tenant}${uid}"
             parameters += '&uid=%s' % uid
         if access_key is not None:
             parameters += '&access-key=%s' % access_key
@@ -334,6 +337,11 @@ class RGWAdmin:
         generate_key: bool = True,
         max_buckets: int | None = None,
         suspended: bool = False,
+        tenant: str | None = None,
+        default_placement: str | None = None,
+        default_storage_class: str | None = None,
+        account_id: str | None = None,
+        account_root: bool | None = None,
     ) -> Any:
         parameters = 'uid=%s&display-name=%s' % (uid, display_name)
         if email is not None:
@@ -350,6 +358,17 @@ class RGWAdmin:
         if max_buckets is not None:
             parameters += '&max-buckets=%s' % max_buckets
         parameters += '&suspended=%s' % suspended
+        if tenant is not None:
+            parameters += '&tenant=%s' % tenant
+        if default_placement is not None:
+            parameters += '&default-placement=%s' % default_placement
+        if default_storage_class is not None:
+            parameters += '&default-storage-class=%s' % default_storage_class
+        if account_id is not None:
+            parameters += '&account-id=%s' % account_id
+        if account_root is not None:
+            parameters += '&account-root=%s' % account_root
+
         return await self.request('put', '/%s/user?format=%s&%s' % (self._admin, self._response, parameters))
 
     async def get_usage(
@@ -400,7 +419,15 @@ class RGWAdmin:
         generate_key: bool = False,
         max_buckets: int | None = None,
         suspended: bool | None = None,
+        tenant: str | None = None,
+        default_placement: str | None = None,
+        default_storage_class: str | None = None,
+        account_id: str | None = None,
+        account_root: bool | None = None,
     ) -> Any:
+        if tenant is not None:
+            uid = f"{tenant}${uid}"
+
         parameters = 'uid=%s' % uid
         if display_name is not None:
             parameters += '&display-name=%s' % display_name
@@ -419,6 +446,15 @@ class RGWAdmin:
             parameters += '&max-buckets=%s' % max_buckets
         if suspended is not None:
             parameters += '&suspended=%s' % suspended
+        if default_placement is not None:
+            parameters += '&default-placement=%s' % default_placement
+        if default_storage_class is not None:
+            parameters += '&default-storage-class=%s' % default_storage_class
+        if account_id is not None:
+            parameters += '&account-id=%s' % account_id
+        if account_root is not None:
+            parameters += '&account-root=%s' % account_root
+
         return await self.request('post', '/%s/user?format=%s&%s' % (self._admin, self._response, parameters))
 
     async def get_quota(self, uid: str, quota_type: str) -> Any:
@@ -492,7 +528,10 @@ class RGWAdmin:
         parameters = 'uid=%s&bucket=%s%s' % (uid, bucket, quota)
         return await self.request('put', '/%s/bucket?quota&format=%s&%s' % (self._admin, self._response, parameters))
 
-    async def remove_user(self, uid: str, purge_data: bool = False) -> Any:
+    async def remove_user(self, uid: str, purge_data: bool = False, tenant: str | None = None) -> Any:
+        if tenant is not None:
+            uid = f"{tenant}${uid}"
+
         parameters = 'uid=%s' % uid
         parameters += '&purge-data=%s' % purge_data
         return await self.request('delete', '/%s/user?format=%s&%s' % (self._admin, self._response, parameters))
@@ -541,6 +580,115 @@ class RGWAdmin:
     async def remove_subuser(self, uid: str, subuser: str, purge_keys: bool = True) -> Any:
         parameters = 'uid=%s&subuser=%s&purge-keys=%s' % (uid, subuser, purge_keys)
         return await self.request('delete', '/%s/user?subuser&format=%s&%s' % (self._admin, self._response, parameters))
+
+    async def get_accounts(self) -> Any:
+        return await self.get_metadata(metadata_type='account')
+
+    async def create_account(
+        self,
+        id: str | None = None,
+        name: str | None = None,
+        email: str | None = None,
+        tenant: str | None = None,
+        max_users: int | None = None,
+        max_roles: int | None = None,
+        max_groups: int | None = None,
+        max_access_keys: int | None = None,
+        max_buckets: int | None = None,
+    ) -> Any:
+        parameters = ''
+        if id is not None:
+            parameters += '&id=%s' % id
+        if name is not None:
+            parameters += '&name=%s' % name
+        if email is not None:
+            parameters += '&email=%s' % email
+        if tenant is not None:
+            parameters += '&tenant=%s' % tenant
+        if max_users is not None:
+            parameters += '&max-users=%s' % max_users
+        if max_roles is not None:
+            parameters += '&max-roles=%s' % max_roles
+        if max_groups is not None:
+            parameters += '&max-groups=%s' % max_groups
+        if max_access_keys is not None:
+            parameters += '&max-access-keys=%s' % max_access_keys
+        if max_buckets is not None:
+            parameters += '&max-buckets=%s' % max_buckets
+
+        return await self.request('post', '/%s/account?format=%s%s' % (self._admin, self._response, parameters))
+
+    async def modify_account(
+        self,
+        id: str | None = None,
+        name: str | None = None,
+        email: str | None = None,
+        tenant: str | None = None,
+        max_users: int | None = None,
+        max_roles: int | None = None,
+        max_groups: int | None = None,
+        max_access_keys: int | None = None,
+        max_buckets: int | None = None,
+    ) -> Any:
+        parameters = ''
+        if id is not None:
+            parameters += '&id=%s' % id
+        if name is not None:
+            parameters += '&name=%s' % name
+        if email is not None:
+            parameters += '&email=%s' % email
+        if tenant is not None:
+            parameters += '&tenant=%s' % tenant
+        if max_users is not None:
+            parameters += '&max-users=%s' % max_users
+        if max_roles is not None:
+            parameters += '&max-roles=%s' % max_roles
+        if max_groups is not None:
+            parameters += '&max-groups=%s' % max_groups
+        if max_access_keys is not None:
+            parameters += '&max-access-keys=%s' % max_access_keys
+        if max_buckets is not None:
+            parameters += '&max-buckets=%s' % max_buckets
+
+        return await self.request('put', '/%s/account?format=%s%s' % (self._admin, self._response, parameters))
+
+    async def get_account(
+        self,
+        id: str | None = None,
+        name: str | None = None,
+        email: str | None = None,
+        tenant: str | None = None,
+    ) -> Any:
+        parameters = ''
+        if id is not None:
+            parameters += '&id=%s' % id
+        if name is not None:
+            parameters += '&name=%s' % name
+        if email is not None:
+            parameters += '&email=%s' % email
+        if tenant is not None:
+            parameters += '&tenant=%s' % tenant
+
+        return await self.request('get', '/%s/account?format=%s%s' % (self._admin, self._response, parameters))
+
+    async def remove_account(
+        self,
+        id: str | None = None,
+        name: str | None = None,
+        email: str | None = None,
+        tenant: str | None = None,
+    ) -> Any:
+        parameters = ''
+        if id is not None:
+            parameters += '&id=%s' % id
+        if name is not None:
+            parameters += '&name=%s' % name
+        if email is not None:
+            parameters += '&email=%s' % email
+        if tenant is not None:
+            parameters += '&tenant=%s' % tenant
+
+        return await self.request('delete', '/%s/account?format=%s%s' % (self._admin, self._response, parameters))
 
     async def create_key(
         self,
