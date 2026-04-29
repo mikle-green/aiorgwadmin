@@ -40,6 +40,7 @@ class RGWAdmin:
     _verify: bool
     _protocol: str
     _timeout: float | None
+    _max_connections: int
     _session: ClientSession | None
 
     connection: ClassVar['RGWAdmin']
@@ -58,6 +59,7 @@ class RGWAdmin:
         verify: bool = True,
         timeout: float | None = None,
         pool_connections: bool = False,
+        max_connections: int = 100,
     ) -> None:
         self._access_key = access_key
         self._secret_key = secret_key
@@ -75,6 +77,7 @@ class RGWAdmin:
             self._protocol = 'http'
 
         self._timeout = timeout
+        self._max_connections = max_connections
         self._skip_auto_headers = ["Content-Type"]
 
         self._auth = S3Auth(self._access_key, self._secret_key, self._server)
@@ -99,7 +102,7 @@ class RGWAdmin:
             ssl = self._verify
 
         return ClientSession(
-            connector=TCPConnector(ssl=ssl),
+            connector=TCPConnector(ssl=ssl, limit=self._max_connections),
             skip_auto_headers=self._skip_auto_headers,
             timeout=ClientTimeout(self._timeout),
         )
