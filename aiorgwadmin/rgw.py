@@ -16,7 +16,7 @@ from awsauth import S3Auth
 from requests import Request
 
 from .exceptions import (
-    RGWAdminException, AccessDenied, UserExists,
+    RGWAdminException, AccessDenied, UserAlreadyExists, UserExists, AccountAlreadyExists,
     InvalidAccessKey, InvalidSecretKey, InvalidKeyType,
     KeyExists, EmailExists, SubuserExists, InvalidAccess,
     IndexRepairFailed, BucketNotEmpty, ObjectRemovalFailed,
@@ -173,7 +173,7 @@ class RGWAdmin:
             else:
                 raise ServerDown(r.status)
 
-            for e in [AccessDenied, UserExists, InvalidAccessKey,
+            for e in [AccessDenied, UserAlreadyExists, UserExists, AccountAlreadyExists, InvalidAccessKey,
                       InvalidKeyType, InvalidSecretKey, KeyExists, EmailExists,
                       SubuserExists, InvalidAccess, InvalidArgument,
                       IndexRepairFailed, BucketNotEmpty, ObjectRemovalFailed,
