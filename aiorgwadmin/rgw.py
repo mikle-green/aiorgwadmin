@@ -346,7 +346,7 @@ class RGWAdmin:
         account_id: str | None = None,
         account_root: bool | None = None,
     ) -> Any:
-        parameters = 'uid=%s&display-name=%s' % (uid, display_name)
+        parameters = 'uid=%s&display-name=%s' % (uid, quote(display_name))
         if email is not None:
             parameters += '&email=%s' % email
         if key_type is not None:
@@ -433,7 +433,7 @@ class RGWAdmin:
 
         parameters = 'uid=%s' % uid
         if display_name is not None:
-            parameters += '&display-name=%s' % display_name
+            parameters += '&display-name=%s' % quote(display_name)
         if email is not None:
             parameters += '&email=%s' % email
         if key_type is not None:
